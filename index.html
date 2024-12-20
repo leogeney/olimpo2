@@ -3,27 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Clientes</title>
+    <title>GYM OLIMPO</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
-            background-color: #f4f4f9;
+            background-color: #0a0a0a;
         }
         .container {
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
-            background: #fff;
+            background: #181818;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         h1 {
             text-align: center;
-            color: #333;
+            color: #ff9100;
+            text-shadow: 0px 0px 4px rgba(207,117,0,0.6);
+            font-size: 2em;
         }
         .form-group {
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
             margin-bottom: 15px;
         }
@@ -33,14 +36,18 @@
             margin-right: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
+            font-size: 17px;
+            min-width: 150px;
         }
         .form-group button {
+            font-size: 17px;
             padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
+            background-color: #cf7500;
+            color: #0f0f0f;
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            margin: 5px 0;
         }
         .form-group button:hover {
             background-color: #0056b3;
@@ -57,6 +64,9 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             margin-bottom: 10px;
+            color: #ff9100;
+            font-size: 17px;
+            flex-wrap: wrap;
         }
         li button {
             background-color: #dc3545;
@@ -71,20 +81,58 @@
         }
         .countdown {
             margin-left: 10px;
-            color: #555;
+            color: #0056b3;
             font-size: 0.9em;
+        }
+        .ff {
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+        /* Estilos responsivos */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.5em;
+            }
+            .form-group {
+                flex-direction: column;
+                align-items: center;
+            }
+            .form-group input {
+                margin-bottom: 10px;
+                width: 50%;
+            }
+            .ff {
+                flex-direction: column;
+                align-items: center;
+                width: 100%;
+            }
+            .ff button {
+                margin: 5px;
+                width: 50%;
+            }
+            li {
+                flex-direction: column;
+                text-align: center;
+            }
+            .countdown {
+                margin: 10px 0;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Gestión de Clientes</h1>
+        <h1>GYM OLIMPO</h1>
         <div class="form-group">
-            <input type="text" id="clientName" placeholder="Ingrese el nombre del cliente">
-            <button id="oneDay">1 Día</button>
-            <button id="oneWeek">1 Semana</button>
-            <button id="fifteenDays">15 Días</button>
-            <button id="thirtyDays">30 Días</button>
+            <input class="fot" type="text" id="clientName" placeholder="Ingrese el nombre del cliente">
+            <div class="ff" style="margin-top: 10px;">
+                <button id="oneDay">1 Día</button>
+                <button id="oneWeek">1 Semana</button>
+                <button id="fifteenDays">15 Días</button>
+                <button id="thirtyDays">30 Días</button>
+            </div>
         </div>
         <ul id="clientList"></ul>
     </div>
