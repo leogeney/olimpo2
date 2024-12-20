@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Clientes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .form-group {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .form-group input {
+            flex: 1;
+            padding: 10px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .form-group button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .form-group button:hover {
+            background-color: #0056b3;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        li button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        li button:hover {
+            background-color: #a71d2a;
+        }
+        .countdown {
+            margin-left: 10px;
+            color: #555;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gestión de Clientes</h1>
+        <div class="form-group">
+            <input type="text" id="clientName" placeholder="Ingrese el nombre del cliente">
+            <button id="oneDay">1 Día</button>
+            <button id="oneWeek">1 Semana</button>
+            <button id="fifteenDays">15 Días</button>
+            <button id="thirtyDays">30 Días</button>
+        </div>
+        <ul id="clientList"></ul>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/locale/es.js"></script>
+
+    <script>
+        // Configurar Moment.js para español
+        moment.locale('es');
+
+        function saveClientsToLocalStorage() {
+            const clients = [];
+            document.querySelectorAll('#clientList li').forEach(li => {
+                const clientName = li.firstChild.textContent;
+                const expirationDate = li.dataset.expirationDate;
+                const startDate = li.dataset.startDate;
+                clients.push({ name: clientName, expirationDate, startDate });
+            });
+            localStorage.setItem('clients', JSON.stringify(clients));
+        }
+
+        function addClientWithTimeout(clientName, timeoutValue) {
+            const clientList = document.getElementById('clientList');
+            const li = document.createElement('li');
+            li.textContent = clientName;
+
+            const startDate = moment().format('D [de] MMMM [de] YYYY'); // Fecha de inicio
+            const expirationDate = moment().add(timeoutValue, 'days').format('D [de] MMMM [de] YYYY'); // Fecha de finalización
+            li.dataset.startDate = startDate;
+            li.dataset.expirationDate = expirationDate;
+
+            const countdown = document.createElement('span');
+            countdown.className = 'countdown';
+            countdown.textContent = `Inició el ${startDate}, finaliza el ${expirationDate}`;
+
+            const removeButton = document.createElement('button');
+            removeButton.textContent = 'Eliminar';
+            removeButton.addEventListener('click', function() {
+                clientList.removeChild(li);
+                saveClientsToLocalStorage();
+            });
+
+            li.appendChild(countdown);
+            li.appendChild(removeButton);
+            clientList.appendChild(li);
+
+            // Eliminar automáticamente cuando la fecha final sea alcanzada
+            const interval = setInterval(() => {
+                if (moment().isAfter(expirationDate)) {
+                    clearInterval(interval);
+                    if (clientList.contains(li)) {
+                        clientList.removeChild(li);
+                        saveClientsToLocalStorage();
+                    }
+                }
+            }, 60000); // Comprobar cada minuto
+
+            saveClientsToLocalStorage();
+        }
+
+        function loadClientsFromLocalStorage() {
+            const clients = JSON.parse(localStorage.getItem('clients')) || [];
+            clients.forEach(client => {
+                // Convertir la fecha de expiración de nuevo a un formato de moment
+                addClientWithTimeout(client.name, moment(client.expirationDate, 'D [de] MMMM [de] YYYY').diff(moment(client.startDate, 'D [de] MMMM [de] YYYY'), 'days'));
+            });
+        }
+
+        document.getElementById('oneDay').addEventListener('click', function() {
+            const clientName = document.getElementById('clientName').value.trim();
+            if (clientName === '') {
+                alert('Por favor, ingrese un nombre válido.');
+                return;
+            }
+            addClientWithTimeout(clientName, 1); // 1 día
+            document.getElementById('clientName').value = '';
+        });
+
+        document.getElementById('oneWeek').addEventListener('click', function() {
+            const clientName = document.getElementById('clientName').value.trim();
+            if (clientName === '') {
+                alert('Por favor, ingrese un nombre válido.');
+                return;
+            }
+            addClientWithTimeout(clientName, 7); // 1 semana
+            document.getElementById('clientName').value = '';
+        });
+
+        document.getElementById('fifteenDays').addEventListener('click', function() {
+            const clientName = document.getElementById('clientName').value.trim();
+            if (clientName === '') {
+                alert('Por favor, ingrese un nombre válido.');
+                return;
+            }
+            addClientWithTimeout(clientName, 15); // 15 días
+            document.getElementById('clientName').value = '';
+        });
+
+        document.getElementById('thirtyDays').addEventListener('click', function() {
+            const clientName = document.getElementById('clientName').value.trim();
+            if (clientName === '') {
+                alert('Por favor, ingrese un nombre válido.');
+                return;
+            }
+            addClientWithTimeout(clientName, 30); // 30 días
+            document.getElementById('clientName').value = '';
+        });
+
+        window.onload = loadClientsFromLocalStorage;
+    </script>
+</body>
+</html>
