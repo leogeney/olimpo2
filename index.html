@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GYM OLIMPO</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
     <style>
         /* Estilos CSS */
         body {
@@ -85,255 +86,74 @@
             color: #0056b3;
             font-size: 0.9em;
         }
-        .ff {
-            width: 100%;
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-        }
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 1.5em;
-            }
-            .form-group {
-                flex-direction: column;
-                align-items: center;
-            }
-            .form-group input {
-                margin-bottom: 10px;
-                width: 50%;
-            }
-            .ff {
-                flex-direction: column;
-                align-items: center;
-                width: 100%;
-            }
-            .ff button {
-                margin: 5px;
-                width: 50%;
-            }
-            li {
-                flex-direction: column;
-                text-align: center;
-            }
-            .countdown {
-                margin: 10px 0;
-            }
-        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div id="app" class="container">
         <h1>GYM OLIMPO</h1>
         <div class="form-group">
-            <input class="fot" type="text" id="clientName" placeholder="Ingrese el nombre del cliente">
-            <div class="ff" style="margin-top: 10px;">
-                <button id="oneDay">1 Día</button>
-                <button id="oneWeek">1 Semana</button>
-                <button id="fifteenDays">15 Días</button>
-                <button id="thirtyDays">30 Días</button>
+            <input type="text" v-model="newClientName" placeholder="Ingrese el nombre del cliente">
+            <div style="margin-top: 10px;">
+                <button @click="addClient(1)">1 Día</button>
+                <button @click="addClient(7)">1 Semana</button>
+                <button @click="addClient(15)">15 Días</button>
+                <button @click="addClient(30)">30 Días</button>
             </div>
         </div>
-        <ul id="clientList"></ul>
-    </div>
-
-    <!-- Modal for Edit Form -->
-    <div id="editModal" style="display:none;">
-        <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #181818; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <h2 style="color: #ff9100; text-align: center;">Editar Cliente</h2>
-            <input type="text" id="editClientName" placeholder="Nombre del cliente" style="width: 100%; padding: 10px; margin-bottom: 10px;">
-            <input type="date" id="editExpirationDate" style="width: 100%; padding: 10px; margin-bottom: 10px;">
-            <button id="saveEdit" style="width: 100%; padding: 10px; background-color: #cf7500; color: #0f0f0f;">Guardar</button>
-            <button id="cancelEdit" style="width: 100%; padding: 10px; margin-top: 10px; background-color: #dc3545; color: white;">Cancelar</button>
-        </div>
+        <ul>
+            <li v-for="(client, index) in clients" :key="client.id">
+                {{ client.name }}
+                <span class="countdown">
+                    Inició el {{ client.startDate }} — Finaliza el {{ client.expirationDate }}
+                </span>
+                <button @click="deleteClient(index)">Eliminar</button>
+            </li>
+        </ul>
     </div>
 
     <script>
-        // Inicializar IndexedDB
-        const request = indexedDB.open('GymOlimpoDB', 1);
-        let db;
+        const { createApp } = Vue;
 
-        request.onupgradeneeded = function(event) {
-            db = event.target.result;
-            const objectStore = db.createObjectStore('clients', { keyPath: 'id', autoIncrement: true });
-            objectStore.createIndex('name', 'name', { unique: false });
-        };
-
-        request.onsuccess = function(event) {
-            db = event.target.result;
-            loadClients();
-        };
-
-        request.onerror = function(event) {
-            console.error('Error al abrir la base de datos:', event.target.errorCode);
-        };
-
-        // Función para agregar cliente
-        function addClient(client) {
-            const transaction = db.transaction(['clients'], 'readwrite');
-            const objectStore = transaction.objectStore('clients');
-            objectStore.add(client);
-            transaction.oncomplete = loadClients;
-        }
-
-        // Función para eliminar cliente
-        function deleteClient(id) {
-            const transaction = db.transaction(['clients'], 'readwrite');
-            const objectStore = transaction.objectStore('clients');
-            objectStore.delete(id);
-            transaction.oncomplete = loadClients;
-        }
-
-        // Función para cargar clientes
-        // Función para cargar clientes
-function loadClients() {
-    const clientList = document.getElementById('clientList');
-    clientList.innerHTML = '';
-
-    const transaction = db.transaction(['clients']);
-    const objectStore = transaction.objectStore('clients');
-
-    objectStore.openCursor().onsuccess = function(event) {
-        const cursor = event.target.result;
-        if (cursor) {
-            const client = cursor.value;
-            const today = new Date();
-            const expirationDate = new Date(client.expirationDate);
-
-            // Verificar si ha expirado
-            if (today > expirationDate || today.toDateString() === expirationDate.toDateString()) {
-                deleteClient(client.id);
-                cursor.continue();
-                return;
-            }
-
-            const li = document.createElement('li');
-            li.textContent = client.name;
-
-            const countdown = document.createElement('span');
-            countdown.className = 'countdown';
-            countdown.textContent = `Inició el ${client.startDate}, finaliza el ${client.expirationDate}`;
-
-            const removeButton = document.createElement('button');
-            removeButton.textContent = 'Eliminar';
-            removeButton.addEventListener('click', function() {
-                deleteClient(client.id);
-            });
-
-            // Botón para editar
-            const editButton = document.createElement('button');
-            editButton.textContent = 'Editar';
-            editButton.style.backgroundColor = '#007bff';
-            editButton.style.color = 'white';
-            editButton.addEventListener('click', function() {
-                openEditModal(client);
-            });
-
-            li.appendChild(countdown);
-            li.appendChild(editButton);
-            li.appendChild(removeButton);
-            clientList.appendChild(li);
-
-            cursor.continue();
-        }
-    };
-}
-
-
-        // Función para añadir cliente con tiempo límite
-        function addClientWithTimeout(name, days) {
-            const startDate = new Date();
-            const expirationDate = new Date();
-            expirationDate.setDate(startDate.getDate() + days);
-
-            addClient({
-                name,
-                startDate: startDate.toLocaleDateString('es-ES'),
-                expirationDate: expirationDate.toLocaleDateString('es-ES')
-            });
-        }
-
-               // Función para abrir modal de edición
-        function openEditModal(client) {
-            document.getElementById('editClientName').value = client.name;
-            document.getElementById('editExpirationDate').value = client.expirationDate;
-            document.getElementById('editModal').style.display = 'block';
-
-            document.getElementById('saveEdit').onclick = function() {
-                saveEdit(client.id);
-            };
-            document.getElementById('cancelEdit').onclick = function() {
-                document.getElementById('editModal').style.display = 'none';
-            };
-        }
-
-        // Función para guardar los cambios de edición
-        function saveEdit(clientId) {
-            const updatedName = document.getElementById('editClientName').value.trim();
-            const updatedExpirationDate = document.getElementById('editExpirationDate').value;
-
-            if (!updatedName || !updatedExpirationDate) {
-                alert('Por favor, complete todos los campos.');
-                return;
-            }
-
-            const transaction = db.transaction(['clients'], 'readwrite');
-            const objectStore = transaction.objectStore('clients');
-            const request = objectStore.get(clientId);
-
-            request.onsuccess = function(event) {
-                const client = event.target.result;
-                client.name = updatedName;
-                client.expirationDate = updatedExpirationDate;
-
-                const updateRequest = objectStore.put(client);
-                updateRequest.onsuccess = function() {
-                    document.getElementById('editModal').style.display = 'none';
-                    loadClients();
+        createApp({
+            data() {
+                return {
+                    newClientName: '',
+                    clients: [] // Almacenará la lista de clientes
                 };
-            };
-        }
+            },
+            methods: {
+                addClient(days) {
+                    if (!this.newClientName.trim()) {
+                        alert('Ingrese un nombre válido.');
+                        return;
+                    }
+                    const startDate = new Date();
+                    const expirationDate = new Date();
+                    expirationDate.setDate(startDate.getDate() + days);
 
-        // Eventos para los botones
-        document.getElementById('oneDay').addEventListener('click', () => {
-            const name = document.getElementById('clientName').value.trim();
-            if (!name) {
-                alert('Ingrese un nombre válido.');
-                return;
-            }
-            addClientWithTimeout(name, 1);
-            document.getElementById('clientName').value = '';
-        });
+                    this.clients.push({
+                        id: Date.now(),
+                        name: this.newClientName.trim(),
+                        startDate: startDate.toLocaleDateString('es-ES'),
+                        expirationDate: expirationDate.toLocaleDateString('es-ES')
+                    });
 
-        document.getElementById('oneWeek').addEventListener('click', () => {
-            const name = document.getElementById('clientName').value.trim();
-            if (!name) {
-                alert('Ingrese un nombre válido.');
-                return;
+                    this.newClientName = '';
+                },
+                deleteClient(index) {
+                    this.clients.splice(index, 1);
+                },
+                checkExpirations() {
+                    const today = new Date().toLocaleDateString('es-ES');
+                    this.clients = this.clients.filter(client => client.expirationDate !== today);
+                }
+            },
+            mounted() {
+                // Revisa expiraciones cada vez que se monta el componente
+                this.checkExpirations();
+                setInterval(this.checkExpirations, 1000 * 60 * 60 * 24); // Revisa una vez al día
             }
-            addClientWithTimeout(name, 7);
-            document.getElementById('clientName').value = '';
-        });
-
-        document.getElementById('fifteenDays').addEventListener('click', () => {
-            const name = document.getElementById('clientName').value.trim();
-            if (!name) {
-                alert('Ingrese un nombre válido.');
-                return;
-            }
-            addClientWithTimeout(name, 15);
-            document.getElementById('clientName').value = '';
-        });
-
-        document.getElementById('thirtyDays').addEventListener('click', () => {
-            const name = document.getElementById('clientName').value.trim();
-            if (!name) {
-                alert('Ingrese un nombre válido.');
-                return;
-            }
-            addClientWithTimeout(name, 30);
-            document.getElementById('clientName').value = '';
-        });
+        }).mount('#app');
     </script>
 </body>
 </html>
