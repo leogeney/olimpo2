@@ -139,17 +139,29 @@
                     });
 
                     this.newClientName = '';
+                    this.saveClients();
                 },
                 deleteClient(index) {
                     this.clients.splice(index, 1);
+                    this.saveClients();
                 },
                 checkExpirations() {
                     const today = new Date().toLocaleDateString('es-ES');
                     this.clients = this.clients.filter(client => client.expirationDate !== today);
+                    this.saveClients();
+                },
+                saveClients() {
+                    localStorage.setItem('clients', JSON.stringify(this.clients));
+                },
+                loadClients() {
+                    const storedClients = localStorage.getItem('clients');
+                    if (storedClients) {
+                        this.clients = JSON.parse(storedClients);
+                    }
                 }
             },
             mounted() {
-                // Revisa expiraciones cada vez que se monta el componente
+                this.loadClients();
                 this.checkExpirations();
                 setInterval(this.checkExpirations, 1000 * 60 * 60 * 24); // Revisa una vez al día
             }
