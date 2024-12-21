@@ -185,53 +185,60 @@
         }
 
         // Función para cargar clientes
-        function loadClients() {
-            const clientList = document.getElementById('clientList');
-            clientList.innerHTML = '';
+        // Función para cargar clientes
+function loadClients() {
+    const clientList = document.getElementById('clientList');
+    clientList.innerHTML = '';
 
-            const transaction = db.transaction(['clients']);
-            const objectStore = transaction.objectStore('clients');
+    const transaction = db.transaction(['clients']);
+    const objectStore = transaction.objectStore('clients');
 
-            objectStore.openCursor().onsuccess = function(event) {
-                const cursor = event.target.result;
-                if (cursor) {
-                    const client = cursor.value;
-                    const li = document.createElement('li');
-                    li.textContent = client.name;
+    objectStore.openCursor().onsuccess = function(event) {
+        const cursor = event.target.result;
+        if (cursor) {
+            const client = cursor.value;
+            const today = new Date();
+            const expirationDate = new Date(client.expirationDate);
 
-                    const countdown = document.createElement('span');
-                    countdown.className = 'countdown';
-                    countdown.textContent = `Inició el ${client.startDate}, finaliza el ${client.expirationDate}`;
+            // Verificar si ha expirado
+            if (today > expirationDate || today.toDateString() === expirationDate.toDateString()) {
+                deleteClient(client.id);
+                cursor.continue();
+                return;
+            }
 
-                    const removeButton = document.createElement('button');
-                    removeButton.textContent = 'Eliminar';
-                    removeButton.addEventListener('click', function() {
-                        deleteClient(client.id);
-                    });
+            const li = document.createElement('li');
+            li.textContent = client.name;
 
-                    // Edit Button
-                    const editButton = document.createElement('button');
-                    editButton.textContent = 'Editar';
-                    editButton.style.backgroundColor = '#007bff';
-                    editButton.style.color = 'white';
-                    editButton.addEventListener('click', function() {
-                        openEditModal(client);
-                    });
+            const countdown = document.createElement('span');
+            countdown.className = 'countdown';
+            countdown.textContent = `Inició el ${client.startDate}, finaliza el ${client.expirationDate}`;
 
-                    li.appendChild(countdown);
-                    li.appendChild(editButton);
-                    li.appendChild(removeButton);
-                    clientList.appendChild(li);
+            const removeButton = document.createElement('button');
+            removeButton.textContent = 'Eliminar';
+            removeButton.addEventListener('click', function() {
+                deleteClient(client.id);
+            });
 
-                    // Verificar si ha expirado
-                    if (new Date() > new Date(client.expirationDate)) {
-                        deleteClient(client.id);
-                    }
+            // Botón para editar
+            const editButton = document.createElement('button');
+            editButton.textContent = 'Editar';
+            editButton.style.backgroundColor = '#007bff';
+            editButton.style.color = 'white';
+            editButton.addEventListener('click', function() {
+                openEditModal(client);
+            });
 
-                    cursor.continue();
-                }
-            };
+            li.appendChild(countdown);
+            li.appendChild(editButton);
+            li.appendChild(removeButton);
+            clientList.appendChild(li);
+
+            cursor.continue();
         }
+    };
+}
+
 
         // Función para añadir cliente con tiempo límite
         function addClientWithTimeout(name, days) {
