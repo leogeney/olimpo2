@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GYM OLIMPO</title>
     <style>
+        /* Estilos CSS */
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
@@ -90,7 +91,6 @@
             justify-content: space-around;
             flex-wrap: wrap;
         }
-        /* Estilos responsivos */
         @media (max-width: 768px) {
             h1 {
                 font-size: 1.5em;
@@ -137,112 +137,196 @@
         <ul id="clientList"></ul>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/locale/es.js"></script>
+    <!-- Modal for Edit Form -->
+    <div id="editModal" style="display:none;">
+        <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #181818; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            <h2 style="color: #ff9100; text-align: center;">Editar Cliente</h2>
+            <input type="text" id="editClientName" placeholder="Nombre del cliente" style="width: 100%; padding: 10px; margin-bottom: 10px;">
+            <input type="date" id="editExpirationDate" style="width: 100%; padding: 10px; margin-bottom: 10px;">
+            <button id="saveEdit" style="width: 100%; padding: 10px; background-color: #cf7500; color: #0f0f0f;">Guardar</button>
+            <button id="cancelEdit" style="width: 100%; padding: 10px; margin-top: 10px; background-color: #dc3545; color: white;">Cancelar</button>
+        </div>
+    </div>
 
     <script>
-        // Configurar Moment.js para español
-        moment.locale('es');
+        // Inicializar IndexedDB
+        const request = indexedDB.open('GymOlimpoDB', 1);
+        let db;
 
-        function saveClientsToLocalStorage() {
-            const clients = [];
-            document.querySelectorAll('#clientList li').forEach(li => {
-                const clientName = li.firstChild.textContent;
-                const expirationDate = li.dataset.expirationDate;
-                const startDate = li.dataset.startDate;
-                clients.push({ name: clientName, expirationDate, startDate });
-            });
-            localStorage.setItem('clients', JSON.stringify(clients));
+        request.onupgradeneeded = function(event) {
+            db = event.target.result;
+            const objectStore = db.createObjectStore('clients', { keyPath: 'id', autoIncrement: true });
+            objectStore.createIndex('name', 'name', { unique: false });
+        };
+
+        request.onsuccess = function(event) {
+            db = event.target.result;
+            loadClients();
+        };
+
+        request.onerror = function(event) {
+            console.error('Error al abrir la base de datos:', event.target.errorCode);
+        };
+
+        // Función para agregar cliente
+        function addClient(client) {
+            const transaction = db.transaction(['clients'], 'readwrite');
+            const objectStore = transaction.objectStore('clients');
+            objectStore.add(client);
+            transaction.oncomplete = loadClients;
         }
 
-        function addClientWithTimeout(clientName, timeoutValue) {
+        // Función para eliminar cliente
+        function deleteClient(id) {
+            const transaction = db.transaction(['clients'], 'readwrite');
+            const objectStore = transaction.objectStore('clients');
+            objectStore.delete(id);
+            transaction.oncomplete = loadClients;
+        }
+
+        // Función para cargar clientes
+        function loadClients() {
             const clientList = document.getElementById('clientList');
-            const li = document.createElement('li');
-            li.textContent = clientName;
+            clientList.innerHTML = '';
 
-            const startDate = moment().format('D [de] MMMM [de] YYYY'); // Fecha de inicio
-            const expirationDate = moment().add(timeoutValue, 'days').format('D [de] MMMM [de] YYYY'); // Fecha de finalización
-            li.dataset.startDate = startDate;
-            li.dataset.expirationDate = expirationDate;
+            const transaction = db.transaction(['clients']);
+            const objectStore = transaction.objectStore('clients');
 
-            const countdown = document.createElement('span');
-            countdown.className = 'countdown';
-            countdown.textContent = `Inició el ${startDate}, finaliza el ${expirationDate}`;
+            objectStore.openCursor().onsuccess = function(event) {
+                const cursor = event.target.result;
+                if (cursor) {
+                    const client = cursor.value;
+                    const li = document.createElement('li');
+                    li.textContent = client.name;
 
-            const removeButton = document.createElement('button');
-            removeButton.textContent = 'Eliminar';
-            removeButton.addEventListener('click', function() {
-                clientList.removeChild(li);
-                saveClientsToLocalStorage();
-            });
+                    const countdown = document.createElement('span');
+                    countdown.className = 'countdown';
+                    countdown.textContent = `Inició el ${client.startDate}, finaliza el ${client.expirationDate}`;
 
-            li.appendChild(countdown);
-            li.appendChild(removeButton);
-            clientList.appendChild(li);
+                    const removeButton = document.createElement('button');
+                    removeButton.textContent = 'Eliminar';
+                    removeButton.addEventListener('click', function() {
+                        deleteClient(client.id);
+                    });
 
-            // Eliminar automáticamente cuando la fecha final sea alcanzada
-            const interval = setInterval(() => {
-                if (moment().isAfter(expirationDate)) {
-                    clearInterval(interval);
-                    if (clientList.contains(li)) {
-                        clientList.removeChild(li);
-                        saveClientsToLocalStorage();
+                    // Edit Button
+                    const editButton = document.createElement('button');
+                    editButton.textContent = 'Editar';
+                    editButton.style.backgroundColor = '#007bff';
+                    editButton.style.color = 'white';
+                    editButton.addEventListener('click', function() {
+                        openEditModal(client);
+                    });
+
+                    li.appendChild(countdown);
+                    li.appendChild(editButton);
+                    li.appendChild(removeButton);
+                    clientList.appendChild(li);
+
+                    // Verificar si ha expirado
+                    if (new Date() > new Date(client.expirationDate)) {
+                        deleteClient(client.id);
                     }
-                }
-            }, 60000); // Comprobar cada minuto
 
-            saveClientsToLocalStorage();
+                    cursor.continue();
+                }
+            };
         }
 
-        function loadClientsFromLocalStorage() {
-            const clients = JSON.parse(localStorage.getItem('clients')) || [];
-            clients.forEach(client => {
-                // Convertir la fecha de expiración de nuevo a un formato de moment
-                addClientWithTimeout(client.name, moment(client.expirationDate, 'D [de] MMMM [de] YYYY').diff(moment(client.startDate, 'D [de] MMMM [de] YYYY'), 'days'));
+        // Función para añadir cliente con tiempo límite
+        function addClientWithTimeout(name, days) {
+            const startDate = new Date();
+            const expirationDate = new Date();
+            expirationDate.setDate(startDate.getDate() + days);
+
+            addClient({
+                name,
+                startDate: startDate.toLocaleDateString('es-ES'),
+                expirationDate: expirationDate.toLocaleDateString('es-ES')
             });
         }
 
-        document.getElementById('oneDay').addEventListener('click', function() {
-            const clientName = document.getElementById('clientName').value.trim();
-            if (clientName === '') {
-                alert('Por favor, ingrese un nombre válido.');
+               // Función para abrir modal de edición
+        function openEditModal(client) {
+            document.getElementById('editClientName').value = client.name;
+            document.getElementById('editExpirationDate').value = client.expirationDate;
+            document.getElementById('editModal').style.display = 'block';
+
+            document.getElementById('saveEdit').onclick = function() {
+                saveEdit(client.id);
+            };
+            document.getElementById('cancelEdit').onclick = function() {
+                document.getElementById('editModal').style.display = 'none';
+            };
+        }
+
+        // Función para guardar los cambios de edición
+        function saveEdit(clientId) {
+            const updatedName = document.getElementById('editClientName').value.trim();
+            const updatedExpirationDate = document.getElementById('editExpirationDate').value;
+
+            if (!updatedName || !updatedExpirationDate) {
+                alert('Por favor, complete todos los campos.');
                 return;
             }
-            addClientWithTimeout(clientName, 1); // 1 día
+
+            const transaction = db.transaction(['clients'], 'readwrite');
+            const objectStore = transaction.objectStore('clients');
+            const request = objectStore.get(clientId);
+
+            request.onsuccess = function(event) {
+                const client = event.target.result;
+                client.name = updatedName;
+                client.expirationDate = updatedExpirationDate;
+
+                const updateRequest = objectStore.put(client);
+                updateRequest.onsuccess = function() {
+                    document.getElementById('editModal').style.display = 'none';
+                    loadClients();
+                };
+            };
+        }
+
+        // Eventos para los botones
+        document.getElementById('oneDay').addEventListener('click', () => {
+            const name = document.getElementById('clientName').value.trim();
+            if (!name) {
+                alert('Ingrese un nombre válido.');
+                return;
+            }
+            addClientWithTimeout(name, 1);
             document.getElementById('clientName').value = '';
         });
 
-        document.getElementById('oneWeek').addEventListener('click', function() {
-            const clientName = document.getElementById('clientName').value.trim();
-            if (clientName === '') {
-                alert('Por favor, ingrese un nombre válido.');
+        document.getElementById('oneWeek').addEventListener('click', () => {
+            const name = document.getElementById('clientName').value.trim();
+            if (!name) {
+                alert('Ingrese un nombre válido.');
                 return;
             }
-            addClientWithTimeout(clientName, 7); // 1 semana
+            addClientWithTimeout(name, 7);
             document.getElementById('clientName').value = '';
         });
 
-        document.getElementById('fifteenDays').addEventListener('click', function() {
-            const clientName = document.getElementById('clientName').value.trim();
-            if (clientName === '') {
-                alert('Por favor, ingrese un nombre válido.');
+        document.getElementById('fifteenDays').addEventListener('click', () => {
+            const name = document.getElementById('clientName').value.trim();
+            if (!name) {
+                alert('Ingrese un nombre válido.');
                 return;
             }
-            addClientWithTimeout(clientName, 15); // 15 días
+            addClientWithTimeout(name, 15);
             document.getElementById('clientName').value = '';
         });
 
-        document.getElementById('thirtyDays').addEventListener('click', function() {
-            const clientName = document.getElementById('clientName').value.trim();
-            if (clientName === '') {
-                alert('Por favor, ingrese un nombre válido.');
+        document.getElementById('thirtyDays').addEventListener('click', () => {
+            const name = document.getElementById('clientName').value.trim();
+            if (!name) {
+                alert('Ingrese un nombre válido.');
                 return;
             }
-            addClientWithTimeout(clientName, 30); // 30 días
+            addClientWithTimeout(name, 30);
             document.getElementById('clientName').value = '';
         });
-
-        window.onload = loadClientsFromLocalStorage;
     </script>
 </body>
 </html>
